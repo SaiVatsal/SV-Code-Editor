@@ -77,7 +77,43 @@ export const isSetupModalOpen = signal<boolean>(false);
 export const isCommandPaletteOpen = signal<boolean>(false);
 export const isQuickOpenOpen = signal<boolean>(false);
 
-export function openFile(filePath: string, content: string, language: string) {
+export function detectLanguage(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase() || "";
+  switch (ext) {
+    case "rs": return "rust";
+    case "ts":
+    case "tsx": return "typescript";
+    case "js":
+    case "jsx":
+    case "mjs":
+    case "cjs": return "javascript";
+    case "json": return "json";
+    case "html":
+    case "htm": return "html";
+    case "css":
+    case "scss":
+    case "less": return "css";
+    case "md":
+    case "markdown": return "markdown";
+    case "py": return "python";
+    case "c":
+    case "h":
+    case "cpp":
+    case "hpp":
+    case "cc": return "cpp";
+    case "toml": return "ini";
+    case "yaml":
+    case "yml": return "yaml";
+    case "sql": return "sql";
+    case "sh":
+    case "bash": return "shell";
+    case "ps1": return "powershell";
+    case "xml": return "xml";
+    default: return "plaintext";
+  }
+}
+
+export function openFile(filePath: string, content: string, language?: string) {
   const existing = openTabs.value.find((t) => t.filePath === filePath);
   if (existing) {
     existing.lastAccessed = Date.now();
@@ -87,6 +123,7 @@ export function openFile(filePath: string, content: string, language: string) {
 
   const title = filePath.split(/[\\/]/).pop() || filePath;
   const isLarge = content.length > 1024 * 1024; // >1MB large file mode
+  const lang = language || detectLanguage(filePath);
 
   // In Lite profile, limit live editor models to maxLiveEditorModels (default 8)
   let updatedTabs = [...openTabs.value];
@@ -103,7 +140,7 @@ export function openFile(filePath: string, content: string, language: string) {
     id: `tab-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     title,
     filePath,
-    language,
+    language: lang,
     content,
     isDirty: false,
     isLargeFile: isLarge,

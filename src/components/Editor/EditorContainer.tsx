@@ -9,10 +9,10 @@ export function EditorContainer() {
   const currentTab = activeTab.value;
   const isLite = settings.value.profile === "Lite";
 
+  // Initialize and mount Monaco editor instance
   useEffect(() => {
     if (!editorRef.current) return;
 
-    // Create Monaco editor instance with strict zero-animation options
     const editor = monaco.editor.create(editorRef.current, {
       value: currentTab?.content || "",
       language: currentTab?.language || "markdown",
@@ -39,12 +39,59 @@ export function EditorContainer() {
       updateActiveTabContent(editor.getValue());
     });
 
+    // Wire custom editor events from MenuBar and Shortcuts
+    const onFind = () => editor.getAction("actions.find")?.run();
+    const onReplace = () => editor.getAction("editor.action.startFindReplaceAction")?.run();
+    const onComment = () => editor.getAction("editor.action.commentLine")?.run();
+    const onGotoLine = () => editor.getAction("editor.action.gotoLine")?.run();
+    const onCopyLineDown = () => editor.getAction("editor.action.copyLinesDownAction")?.run();
+    const onMoveLineDown = () => editor.getAction("editor.action.moveLinesDownAction")?.run();
+    const onMoveLineUp = () => editor.getAction("editor.action.moveLinesUpAction")?.run();
+    const onExpandSelection = () => editor.getAction("editor.action.smartSelect.expand")?.run();
+    const onShrinkSelection = () => editor.getAction("editor.action.smartSelect.shrink")?.run();
+    const onFormat = () => editor.getAction("editor.action.formatDocument")?.run();
+
+    window.addEventListener("editor-find", onFind);
+    window.addEventListener("editor-replace", onReplace);
+    window.addEventListener("editor-comment", onComment);
+    window.addEventListener("editor-goto-line", onGotoLine);
+    window.addEventListener("editor-copy-line-down", onCopyLineDown);
+    window.addEventListener("editor-move-line-down", onMoveLineDown);
+    window.addEventListener("editor-move-line-up", onMoveLineUp);
+    window.addEventListener("editor-expand-selection", onExpandSelection);
+    window.addEventListener("editor-shrink-selection", onShrinkSelection);
+    window.addEventListener("editor-format", onFormat);
+
     return () => {
+      window.removeEventListener("editor-find", onFind);
+      window.removeEventListener("editor-replace", onReplace);
+      window.removeEventListener("editor-comment", onComment);
+      window.removeEventListener("editor-goto-line", onGotoLine);
+      window.removeEventListener("editor-copy-line-down", onCopyLineDown);
+      window.removeEventListener("editor-move-line-down", onMoveLineDown);
+      window.removeEventListener("editor-move-line-up", onMoveLineUp);
+      window.removeEventListener("editor-expand-selection", onExpandSelection);
+      window.removeEventListener("editor-shrink-selection", onShrinkSelection);
+      window.removeEventListener("editor-format", onFormat);
       disposable.dispose();
       editor.dispose();
       monacoInstance.current = null;
     };
   }, [currentTab?.id]);
+
+  // React to reactive settings updates (theme, fontSize, tabSize, profile)
+  useEffect(() => {
+    if (monacoInstance.current) {
+      const editor = monacoInstance.current;
+      editor.updateOptions({
+        fontSize: settings.value.fontSize,
+        tabSize: settings.value.tabSize,
+        minimap: { enabled: settings.value.profile !== "Lite" },
+        bracketPairColorization: { enabled: settings.value.profile !== "Lite" },
+      });
+      monaco.editor.setTheme(settings.value.theme === "light" ? "vs" : "vs-dark");
+    }
+  }, [settings.value.fontSize, settings.value.tabSize, settings.value.theme, settings.value.profile]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", overflow: "hidden" }}>
@@ -117,4 +164,3 @@ export function EditorContainer() {
     </div>
   );
 }
-

@@ -11,7 +11,7 @@ use crate::services::tool_manager::ToolManager;
 use crate::services::updater_service::UpdaterService;
 use serde::{Serialize, Deserialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
@@ -254,6 +254,17 @@ pub async fn agent_audit_instructions(
 }
 
 #[tauri::command]
+pub async fn agent_query_provider(
+    state: State<'_, Arc<AppState>>,
+    endpoint: String,
+    model: String,
+    system_prompt: String,
+    user_prompt: String,
+) -> Result<String, String> {
+    state.agent_engine.query_omniroute(&endpoint, &model, &system_prompt, &user_prompt).await
+}
+
+#[tauri::command]
 pub async fn re_analyze_binary(
     state: State<'_, Arc<AppState>>,
     binary_path: String,
@@ -291,7 +302,7 @@ pub async fn re_get_pseudocode(
     sha256: String,
     address: String,
 ) -> Result<PseudocodeResponse, String> {
-    let (code, evidence) = state.rea_service.get_pseudocode(&sha256, &address);
+    let (code, evidence) = state.rea_service.get_pseudocode(&sha256, &address)?;
     Ok(PseudocodeResponse { code, evidence })
 }
 
@@ -331,18 +342,180 @@ pub async fn updater_rollback_settings(state: State<'_, Arc<AppState>>) -> Resul
     state.updater_service.rollback_settings()
 }
 
-#[tauri::command]
-pub async fn read_workspace_file(_state: State<'_, Arc<AppState>>, path: String) -> Result<String, String> {
-    fs::read_to_string(&path).map_err(|e| format!("Failed to read file: {}", e))
+fn validate_workspace_boundary(target: &Path, workspace: Option<&Path>) -> Result<PathBuf, String> {
+    if let Some(ws) = workspace {
+        let ws_canon = ws.canonicalize().unwrap_or_else(|_| ws.to_path_buf());
+        let target_full = if target.is_relative() {
+            ws.join(target)
+        } else {
+            target.to_path_buf()
+        };
+        // Normalize
+        let target_canon = target_full.canonicalize().unwrap_or_else(|_| target_full.clone());
+        if !target_canon.starts_with(&ws_canon) && !target_full.starts_with(ws) {
+            return Err(format!(
+                "Security violation: Path {:?} is outside the authorized workspace boundary {:?}",
+                target, ws
+            ));
+        }
+        Ok(target_full)
+    } else {
+        Ok(target.to_path_buf())
+    }
 }
 
 #[tauri::command]
-pub async fn write_workspace_file(_state: State<'_, Arc<AppState>>, path: String, content: String) -> Result<(), String> {
-    if let Some(parent) = Path::new(&path).parent() {
+pub async fn read_workspace_file(_state: State<'_, Arc<AppState>>, path: String, workspace_root: Option<String>) -> Result<String, String> {
+    let ws = workspace_root.as_deref().map(Path::new);
+    let safe_path = validate_workspace_boundary(Path::new(&path), ws)?;
+    fs::read_to_string(&safe_path).map_err(|e| format!("Failed to read file {:?}: {}", safe_path, e))
+}
+
+#[tauri::command]
+pub async fn write_workspace_file(_state: State<'_, Arc<AppState>>, path: String, content: String, workspace_root: Option<String>) -> Result<(), String> {
+    let ws = workspace_root.as_deref().map(Path::new);
+    let safe_path = validate_workspace_boundary(Path::new(&path), ws)?;
+    if let Some(parent) = safe_path.parent() {
         let _ = fs::create_dir_all(parent);
     }
-    fs::write(&path, content).map_err(|e| format!("Failed to write file: {}", e))
+    fs::write(&safe_path, content).map_err(|e| format!("Failed to write file {:?}: {}", safe_path, e))
 }
+
+#[tauri::command]
+pub async fn create_workspace_file(_state: State<'_, Arc<AppState>>, path: String, workspace_root: Option<String>) -> Result<(), String> {
+    let ws = workspace_root.as_deref().map(Path::new);
+    let safe_path = validate_workspace_boundary(Path::new(&path), ws)?;
+    if safe_path.exists() {
+        return Err(format!("File already exists: {:?}", safe_path));
+    }
+    if let Some(parent) = safe_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    fs::write(&safe_path, "").map_err(|e| format!("Failed to create file: {}", e))
+}
+
+#[tauri::command]
+pub async fn create_workspace_directory(_state: State<'_, Arc<AppState>>, path: String, workspace_root: Option<String>) -> Result<(), String> {
+    let ws = workspace_root.as_deref().map(Path::new);
+    let safe_path = validate_workspace_boundary(Path::new(&path), ws)?;
+    fs::create_dir_all(&safe_path).map_err(|e| format!("Failed to create directory: {}", e))
+}
+
+#[tauri::command]
+pub async fn rename_workspace_path(_state: State<'_, Arc<AppState>>, old_path: String, new_path: String, workspace_root: Option<String>) -> Result<(), String> {
+    let ws = workspace_root.as_deref().map(Path::new);
+    let safe_old = validate_workspace_boundary(Path::new(&old_path), ws)?;
+    let safe_new = validate_workspace_boundary(Path::new(&new_path), ws)?;
+    fs::rename(&safe_old, &safe_new).map_err(|e| format!("Failed to rename {:?} to {:?}: {}", safe_old, safe_new, e))
+}
+
+#[tauri::command]
+pub async fn delete_workspace_path(_state: State<'_, Arc<AppState>>, path: String, workspace_root: Option<String>) -> Result<(), String> {
+    let ws = workspace_root.as_deref().map(Path::new);
+    let safe_path = validate_workspace_boundary(Path::new(&path), ws)?;
+    if safe_path.is_dir() {
+        fs::remove_dir_all(&safe_path).map_err(|e| format!("Failed to delete directory {:?}: {}", safe_path, e))
+    } else {
+        fs::remove_file(&safe_path).map_err(|e| format!("Failed to delete file {:?}: {}", safe_path, e))
+    }
+}
+
+#[tauri::command]
+pub async fn list_workspace_files_recursive(_state: State<'_, Arc<AppState>>, path: String, max_files: Option<usize>) -> Result<Vec<String>, String> {
+    let root = Path::new(&path);
+    if !root.exists() || !root.is_dir() {
+        return Err("Root path is not a valid directory".into());
+    }
+    let limit = max_files.unwrap_or(5000);
+    let mut files = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+
+    while let Some(dir) = stack.pop() {
+        if files.len() >= limit {
+            break;
+        }
+        if let Ok(entries) = fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with('.') && name != ".sv" {
+                    continue;
+                }
+                if name == "node_modules" || name == "target" || name == ".git" {
+                    continue;
+                }
+                if entry_path.is_dir() {
+                    stack.push(entry_path);
+                } else if entry_path.is_file() {
+                    if let Ok(rel) = entry_path.strip_prefix(root) {
+                        files.push(rel.to_string_lossy().replace('\\', "/"));
+                    }
+                }
+            }
+        }
+    }
+    files.sort();
+    Ok(files)
+}
+
+#[tauri::command]
+pub async fn load_user_settings() -> Result<String, String> {
+    let app_data = std::env::var("APPDATA").unwrap_or_else(|_| "C:\\Users\\Default\\AppData\\Roaming".into());
+    let settings_file = Path::new(&app_data).join("SV Code Editor").join("settings.json");
+    if settings_file.exists() {
+        fs::read_to_string(&settings_file).map_err(|e| format!("Cannot read settings: {}", e))
+    } else {
+        Ok("{}".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn save_user_settings(settings_json: String) -> Result<(), String> {
+    let app_data = std::env::var("APPDATA").unwrap_or_else(|_| "C:\\Users\\Default\\AppData\\Roaming".into());
+    let dir = Path::new(&app_data).join("SV Code Editor");
+    let _ = fs::create_dir_all(&dir);
+    let settings_file = dir.join("settings.json");
+    let tmp_file = dir.join("settings.json.tmp");
+    fs::write(&tmp_file, &settings_json).map_err(|e| format!("Failed to write tmp settings: {}", e))?;
+    fs::rename(&tmp_file, &settings_file).map_err(|e| format!("Failed to commit settings: {}", e))?;
+    Ok(())
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TaskReportSummary {
+    pub task_id: String,
+    pub path: String,
+    pub title: String,
+    pub modified_at: String,
+}
+
+#[tauri::command]
+pub async fn list_workspace_reports(_state: State<'_, Arc<AppState>>, workspace_root: String) -> Result<Vec<TaskReportSummary>, String> {
+    let reports_dir = Path::new(&workspace_root).join(".sv").join("reports");
+    let mut reports = Vec::new();
+    if reports_dir.exists() && reports_dir.is_dir() {
+        if let Ok(entries) = fs::read_dir(&reports_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let task_id = entry.file_name().to_string_lossy().to_string();
+                    let report_md = path.join("REPORT.md");
+                    let modified = entry.metadata().ok().and_then(|m| m.modified().ok()).map(|t| {
+                        chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339()
+                    }).unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
+                    reports.push(TaskReportSummary {
+                        task_id,
+                        path: report_md.to_string_lossy().to_string(),
+                        title: "Task Execution Report".to_string(),
+                        modified_at: modified,
+                    });
+                }
+            }
+        }
+    }
+    Ok(reports)
+}
+
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FileEntry {

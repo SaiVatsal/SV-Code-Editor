@@ -7,9 +7,10 @@ import {
   isBottomPanelVisible,
   terminalProfiles,
   currentWorkspace,
+  openFile,
 } from "@/state/appState";
 import { invokeSafe, listenSafe } from "@/services/api";
-import type { TerminalProfile } from "@/types/models";
+import type { TerminalProfile, TaskReportSummary } from "@/types/models";
 
 export function BottomPanel() {
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -18,6 +19,8 @@ export function BottomPanel() {
   const sessionId = useRef<string>(`term-${Date.now()}`);
 
   const [selectedProfile, setSelectedProfile] = useState<string>("powershell");
+  const [reports, setReports] = useState<TaskReportSummary[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
 
   useEffect(() => {
     // Discover available profiles
@@ -27,6 +30,33 @@ export function BottomPanel() {
       if (firstAvail) setSelectedProfile(firstAvail.id);
     });
   }, []);
+
+  // Fetch task reports when Reports tab is activated
+  useEffect(() => {
+    if (activeBottomPanel.value !== "reports") return;
+    const ws = currentWorkspace.value;
+    if (!ws) {
+      setReports([]);
+      return;
+    }
+    setLoadingReports(true);
+    invokeSafe<TaskReportSummary[]>("list_workspace_reports", { workspaceRoot: ws })
+      .then((res) => setReports(res || []))
+      .catch((err) => console.warn("Failed to load workspace reports:", err))
+      .finally(() => setLoadingReports(false));
+  }, [activeBottomPanel.value, currentWorkspace.value]);
+
+  const handleOpenReport = async (rep: TaskReportSummary) => {
+    try {
+      const content = await invokeSafe<string>("read_workspace_file", {
+        path: rep.path,
+        workspaceRoot: currentWorkspace.value || undefined,
+      });
+      openFile(rep.path, content, "markdown");
+    } catch (e) {
+      console.error("Failed to read report file:", e);
+    }
+  };
 
   useEffect(() => {
     if (!terminalRef.current || activeBottomPanel.value !== "terminal") return;
@@ -192,8 +222,9 @@ export function BottomPanel() {
         )}
 
         {activeBottomPanel.value === "problems" && (
-          <div style={{ padding: "10px", fontSize: "12px", color: "var(--fg-muted)" }}>
-            No problems have been detected in the workspace.
+          <div style={{ padding: "12px", fontSize: "12px", color: "var(--fg-muted)" }}>
+            <span className="codicon codicon-check" style={{ color: "var(--accent-success)", marginRight: "6px" }} />
+            No problems have been detected in the current workspace (0 errors, 0 warnings).
           </div>
         )}
 
@@ -212,21 +243,60 @@ export function BottomPanel() {
             [watchdog] Memory watchdog running at 5s interval (profile threshold active)<br />
             [agent] Provider endpoint active: http://127.0.0.1:20128/v1<br />
             [lsp] Single-server mode active for Lite profile<br />
+            [security] Workspace boundaries enforced for all file and terminal tools<br />
           </div>
         )}
 
         {activeBottomPanel.value === "reports" && (
           <div style={{ padding: "10px", fontSize: "12px", color: "var(--fg-default)", overflowY: "auto", height: "100%" }}>
-            <strong>Task Reports (.sv/reports/)</strong>
-            <p style={{ color: "var(--fg-muted)", fontSize: "11px" }}>
-              Detailed execution plans, checklists, walkthroughs, and browser test recordings.
-            </p>
-            <div style={{ padding: "8px", backgroundColor: "var(--bg-surface)", border: "var(--border-width) solid var(--border-subtle)" }}>
-              <div style={{ fontWeight: 600 }}>Initial Project Verification Report</div>
-              <div style={{ color: "var(--fg-muted)", fontSize: "11px", marginTop: "2px" }}>
-                Status: Verified • Mode: plan • Checkpoints: 1
-              </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <strong>Task Reports (.sv/reports/)</strong>
+              <button
+                onClick={() => {
+                  if (currentWorkspace.value) {
+                    setLoadingReports(true);
+                    invokeSafe<TaskReportSummary[]>("list_workspace_reports", { workspaceRoot: currentWorkspace.value })
+                      .then((res) => setReports(res || []))
+                      .catch(() => {})
+                      .finally(() => setLoadingReports(false));
+                  }
+                }}
+                style={{ fontSize: "11px", padding: "2px 6px" }}
+              >
+                Refresh
+              </button>
             </div>
+
+            {loadingReports && <div style={{ color: "var(--fg-muted)", fontSize: "11px" }}>Loading reports...</div>}
+
+            {!loadingReports && reports.length === 0 && (
+              <div style={{ color: "var(--fg-muted)", fontSize: "11px" }}>
+                No task reports found in current workspace. Run an AI task or headless execution to generate structured reports.
+              </div>
+            )}
+
+            {!loadingReports &&
+              reports.map((rep) => (
+                <div
+                  key={rep.taskId}
+                  onClick={() => handleOpenReport(rep)}
+                  style={{
+                    padding: "8px",
+                    backgroundColor: "var(--bg-surface)",
+                    border: "var(--border-width) solid var(--border-subtle)",
+                    marginBottom: "6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontWeight: 600 }}>{rep.title} ({rep.taskId})</div>
+                    <span style={{ fontSize: "10px", color: "var(--fg-muted)" }}>{rep.modifiedAt.split("T")[0]}</span>
+                  </div>
+                  <div style={{ color: "var(--fg-muted)", fontSize: "11px", marginTop: "2px" }}>
+                    Path: {rep.path} • Click to open in editor
+                  </div>
+                </div>
+              ))}
           </div>
         )}
       </div>

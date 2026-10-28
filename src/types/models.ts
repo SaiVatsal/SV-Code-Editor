@@ -158,3 +158,10 @@ export interface UserProfile {
   lastSyncedAt?: string;
 }
 
+export interface TaskReportSummary {
+  taskId: string;
+  path: string;
+  title: string;
+  modifiedAt: string;
+}
+

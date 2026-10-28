@@ -39,6 +39,23 @@ import type { HardwareInfo } from "@/types/models";
 
 export function App() {
   useEffect(() => {
+    // Load persisted settings
+    invokeSafe<string>("load_user_settings")
+      .then((savedStr) => {
+        if (savedStr && savedStr.trim() !== "" && savedStr.trim() !== "{}") {
+          try {
+            const parsed = JSON.parse(savedStr);
+            settings.value = { ...settings.value, ...parsed };
+            if (parsed.theme) {
+              document.documentElement.setAttribute("data-theme", parsed.theme);
+            }
+          } catch (e) {
+            console.warn("Failed to parse persisted settings:", e);
+          }
+        }
+      })
+      .catch((e) => console.warn("Failed to load user settings:", e));
+
     // Detect hardware & initial profile
     invokeSafe<HardwareInfo>("get_hardware_info")
       .then((info) => {

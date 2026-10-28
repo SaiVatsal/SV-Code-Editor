@@ -1,39 +1,60 @@
 import { useState, useEffect } from "preact/hooks";
-import { isQuickOpenOpen, openFile } from "@/state/appState";
+import { isQuickOpenOpen, openFile, currentWorkspace, detectLanguage } from "@/state/appState";
 import { invokeSafe } from "@/services/api";
 
 export function QuickOpen() {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [files, setFiles] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const files = [
-    "src/main.tsx",
-    "src/App.tsx",
-    "src/styles/theme.css",
-    "src/state/appState.ts",
-    "src-tauri/Cargo.toml",
-    "src-tauri/tauri.conf.json",
-    "src-tauri/src/main.rs",
-    "src-tauri/src/lib.rs",
-    "package.json",
-    "versions.json",
-    "DECISIONS.md",
-    "PROGRESS.md",
-    "README.md",
-  ];
+  // Load files when modal opens
+  useEffect(() => {
+    if (!isQuickOpenOpen.value) return;
+
+    setQuery("");
+    setSelectedIndex(0);
+    setErrorMessage(null);
+
+    const ws = currentWorkspace.value;
+    if (!ws) {
+      setFiles([]);
+      return;
+    }
+
+    setLoading(true);
+    invokeSafe<string[]>("list_workspace_files_recursive", { path: ws, maxFiles: 3000 })
+      .then((res) => {
+        setFiles(res || []);
+      })
+      .catch((err) => {
+        console.warn("Failed to index workspace files for QuickOpen:", err);
+        setErrorMessage("Could not index workspace files: " + String(err));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [isQuickOpenOpen.value]);
 
   const filtered = files.filter((f) => f.toLowerCase().includes(query.toLowerCase()));
 
-  const handleSelect = async (filePath: string) => {
+  const handleSelect = async (relPath: string) => {
+    setErrorMessage(null);
     try {
-      const content = await invokeSafe<string>("read_workspace_file", { path: filePath });
-      const ext = filePath.split(".").pop() || "";
-      const lang = ext === "rs" ? "rust" : ext === "ts" || ext === "tsx" ? "typescript" : ext === "json" ? "json" : ext === "css" ? "css" : ext === "md" ? "markdown" : "plaintext";
-      openFile(filePath, content, lang);
-    } catch {
-      openFile(filePath, `// File: ${filePath}\n`, "typescript");
+      const ws = currentWorkspace.value;
+      const fullPath = ws ? `${ws}\\${relPath.replace(/\//g, "\\")}` : relPath;
+      const content = await invokeSafe<string>("read_workspace_file", {
+        path: fullPath,
+        workspaceRoot: ws || undefined,
+      });
+      const lang = detectLanguage(relPath);
+      openFile(fullPath, content, lang);
+      isQuickOpenOpen.value = false;
+    } catch (err) {
+      console.error("QuickOpen read failed:", err);
+      setErrorMessage(`Failed to open file: ${String(err)}`);
     }
-    isQuickOpenOpen.value = false;
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -53,9 +74,10 @@ export function QuickOpen() {
   };
 
   useEffect(() => {
+    if (!isQuickOpenOpen.value) return;
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [filtered, selectedIndex]);
+  }, [isQuickOpenOpen.value, filtered, selectedIndex]);
 
   if (!isQuickOpenOpen.value) return null;
 
@@ -77,13 +99,13 @@ export function QuickOpen() {
     >
       <div
         style={{
-          width: "560px",
+          width: "580px",
           backgroundColor: "var(--bg-surface)",
           border: "var(--border-width) solid var(--border-strong)",
           boxShadow: "0 4px 16px rgba(0, 0, 0, 0.5)",
           display: "flex",
           flexDirection: "column",
-          maxHeight: "360px",
+          maxHeight: "400px",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -96,34 +118,63 @@ export function QuickOpen() {
               setQuery((e.target as HTMLInputElement).value);
               setSelectedIndex(0);
             }}
-            placeholder="Type file name to open..."
+            placeholder="Type file name to open (e.g. App.tsx, Cargo.toml)..."
             style={{ width: "100%", boxSizing: "border-box", fontSize: "13px" }}
           />
         </div>
 
+        {errorMessage && (
+          <div
+            style={{
+              padding: "6px 12px",
+              backgroundColor: "rgba(239, 68, 68, 0.15)",
+              color: "var(--accent-danger)",
+              fontSize: "12px",
+              borderBottom: "1px solid var(--border-subtle)",
+            }}
+          >
+            {errorMessage}
+          </div>
+        )}
+
         <div style={{ overflowY: "auto", flex: 1, padding: "4px 0" }}>
-          {filtered.map((file, idx) => {
-            const isSelected = idx === selectedIndex;
-            return (
-              <div
-                key={file}
-                onClick={() => handleSelect(file)}
-                style={{
-                  padding: "6px 12px",
-                  backgroundColor: isSelected ? "var(--bg-surface-active)" : "transparent",
-                  color: isSelected ? "var(--fg-default)" : "var(--fg-muted)",
-                  fontSize: "12px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                }}
-              >
-                <span className="codicon codicon-file" style={{ fontSize: "14px" }} />
-                <span>{file}</span>
-              </div>
-            );
-          })}
+          {loading && (
+            <div style={{ padding: "12px", textAlign: "center", color: "var(--fg-muted)", fontSize: "12px" }}>
+              Indexing workspace files...
+            </div>
+          )}
+
+          {!loading && filtered.length === 0 && (
+            <div style={{ padding: "12px", textAlign: "center", color: "var(--fg-muted)", fontSize: "12px" }}>
+              {files.length === 0 ? "No files indexed in workspace." : "No matching files."}
+            </div>
+          )}
+
+          {!loading &&
+            filtered.map((file, idx) => {
+              const isSelected = idx === selectedIndex;
+              return (
+                <div
+                  key={file}
+                  onClick={() => handleSelect(file)}
+                  style={{
+                    padding: "6px 12px",
+                    backgroundColor: isSelected ? "var(--bg-surface-active)" : "transparent",
+                    color: isSelected ? "var(--fg-default)" : "var(--fg-muted)",
+                    fontSize: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span className="codicon codicon-file" style={{ fontSize: "14px" }} />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {file}
+                  </span>
+                </div>
+              );
+            })}
         </div>
       </div>
     </div>

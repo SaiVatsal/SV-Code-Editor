@@ -15,5 +15,10 @@
 - **2026-10-28 07:15**: Generated high-definition multi-resolution 7-tier Windows icon suite (16x16 through 256x256 RGBA) with dark obsidian squircle and electric cyan/violet `< SV >` code brackets branding.
 - **2026-10-28 07:35**: Integrated native Windows File & Folder pickers via `rfd` and dynamic filesystem directory listing in `commands/mod.rs` with real workspace loading in Explorer.
 - **2026-10-28 07:38**: Added complete VS Code MenuBar (`File`, `Edit`, `Selection`, `View`, `Go`, `Run`, `Terminal`, `Help`) with keyboard shortcut badges, full global shortcut handler, and non-blocking in-app Google Sync modal.
+- **2026-10-28 08:05**: Implemented dynamic QuickOpen file indexing via `list_workspace_files_recursive` with strict boundary verification and error banner, eliminating hardcoded file lists and fake fallback files.
+- **2026-10-28 08:10**: Integrated real Open VSX marketplace search API (`https://open-vsx.org/api/-/search`) with debounced querying, plus local `.vsix` package installation.
+- **2026-10-28 08:15**: Implemented real OmniRoute `/v1/chat/completions` client in `AgentEngine` with honest error reporting and connected interactive Run Step action in AgentsHub.
+- **2026-10-28 08:20**: Connected reactive Monaco Editor options and global custom events (`editor-find`, `editor-replace`, `editor-comment`, `editor-goto-line`, `editor-format`) to the MenuBar and Settings persistence.
+- **2026-10-28 08:25**: Implemented dynamic Task Reports viewer in BottomPanel loading real reports from `.sv/reports/<task-id>/REPORT.md` and opening them directly in Monaco.
 
 

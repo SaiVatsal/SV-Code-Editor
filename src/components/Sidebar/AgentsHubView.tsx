@@ -8,6 +8,7 @@ export function AgentsHubView() {
   const [taskPrompt, setTaskPrompt] = useState("");
   const [selectedMode, setSelectedMode] = useState<"ask-first" | "plan" | "auto-accept">("ask-first");
   const [msg, setMsg] = useState<string | null>(null);
+  const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
 
   const maxParallel = settings.value.profile === "Lite" ? 1 : settings.value.profile === "Standard" ? 3 : 6;
 
@@ -73,6 +74,24 @@ export function AgentsHubView() {
       fetchTasksAndWorktrees();
     } catch (e: unknown) {
       setMsg(`Discard failed: ${String(e)}`);
+    }
+  };
+
+  const handleRunStep = async (task: AgentTask) => {
+    setRunningTaskId(task.id);
+    setMsg(`Connecting to AI provider at ${settings.value.omniRouteEndpoint}...`);
+    try {
+      const res = await invokeSafe<string>("agent_query_provider", {
+        endpoint: settings.value.omniRouteEndpoint,
+        model: settings.value.defaultModel,
+        systemPrompt: "You are the SV Code Editor built-in coding agent. Solve coding problems within workspace boundaries.",
+        userPrompt: task.goal,
+      });
+      setMsg(`AI Response for [${task.id}]: ${res.slice(0, 120)}...`);
+    } catch (err) {
+      setMsg(`AI Provider error: ${String(err)}`);
+    } finally {
+      setRunningTaskId(null);
     }
   };
 
@@ -178,8 +197,17 @@ export function AgentsHubView() {
               <div style={{ fontSize: "11px", color: "var(--fg-muted)", marginTop: "4px" }}>
                 Goal: {task.goal}
               </div>
-              <div style={{ fontSize: "10px", color: "var(--fg-subtle)", marginTop: "4px" }}>
-                Branch: {task.branch} • Mode: {task.mode} • Model: {task.model} • Elapsed: {task.elapsedSeconds}s
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px" }}>
+                <span style={{ fontSize: "10px", color: "var(--fg-subtle)" }}>
+                  Branch: {task.branch} • Mode: {task.mode} • Model: {task.model}
+                </span>
+                <button
+                  onClick={() => handleRunStep(task)}
+                  disabled={runningTaskId === task.id}
+                  style={{ fontSize: "10px", padding: "2px 6px" }}
+                >
+                  {runningTaskId === task.id ? "Running..." : "Run Step"}
+                </button>
               </div>
             </div>
           ))

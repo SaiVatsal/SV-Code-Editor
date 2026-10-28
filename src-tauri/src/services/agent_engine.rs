@@ -178,10 +178,36 @@ impl AgentEngine {
         workspace_root: &Path,
         tool_req: &ToolCallRequest,
     ) -> ToolCallResponse {
+        let validate_path = |path_str: &str| -> Result<PathBuf, String> {
+            if path_str.is_empty() {
+                return Err("Path cannot be empty".into());
+            }
+            let target = if Path::new(path_str).is_absolute() {
+                PathBuf::from(path_str)
+            } else {
+                workspace_root.join(path_str)
+            };
+            let ws_canon = workspace_root.canonicalize().unwrap_or_else(|_| workspace_root.to_path_buf());
+            let target_canon = target.canonicalize().unwrap_or_else(|_| target.clone());
+            if !target_canon.starts_with(&ws_canon) && !target.starts_with(workspace_root) {
+                return Err(format!("Security Violation: Path '{}' traverses outside authorized workspace", path_str));
+            }
+            Ok(target)
+        };
+
         match tool_req.tool_name.as_str() {
             "read_file" => {
                 let path_str = tool_req.arguments.get("path").and_then(|v| v.as_str()).unwrap_or("");
-                let full_path = workspace_root.join(path_str);
+                let full_path = match validate_path(path_str) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        return ToolCallResponse {
+                            success: false,
+                            output: "".into(),
+                            error: Some(e),
+                        };
+                    }
+                };
                 match fs::read_to_string(&full_path) {
                     Ok(content) => ToolCallResponse {
                         success: true,
@@ -198,7 +224,16 @@ impl AgentEngine {
             "write_file" => {
                 let path_str = tool_req.arguments.get("path").and_then(|v| v.as_str()).unwrap_or("");
                 let content = tool_req.arguments.get("content").and_then(|v| v.as_str()).unwrap_or("");
-                let full_path = workspace_root.join(path_str);
+                let full_path = match validate_path(path_str) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        return ToolCallResponse {
+                            success: false,
+                            output: "".into(),
+                            error: Some(e),
+                        };
+                    }
+                };
 
                 if let Some(parent) = full_path.parent() {
                     let _ = fs::create_dir_all(parent);
@@ -227,7 +262,16 @@ impl AgentEngine {
                 let path_str = tool_req.arguments.get("path").and_then(|v| v.as_str()).unwrap_or("");
                 let target = tool_req.arguments.get("target").and_then(|v| v.as_str()).unwrap_or("");
                 let replacement = tool_req.arguments.get("replacement").and_then(|v| v.as_str()).unwrap_or("");
-                let full_path = workspace_root.join(path_str);
+                let full_path = match validate_path(path_str) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        return ToolCallResponse {
+                            success: false,
+                            output: "".into(),
+                            error: Some(e),
+                        };
+                    }
+                };
 
                 match fs::read_to_string(&full_path) {
                     Ok(current) => {
@@ -305,6 +349,61 @@ impl AgentEngine {
 
         info!("Wrote task report to {:?}", report_file);
         Ok(report_file)
+    }
+
+    /// Query OmniRoute or OpenAI-compatible endpoint with user and system prompts
+    pub async fn query_omniroute(
+        &self,
+        endpoint: &str,
+        model: &str,
+        system_prompt: &str,
+        user_prompt: &str,
+    ) -> Result<String, String> {
+        let client = match reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+        {
+            Ok(c) => c,
+            Err(e) => return Err(format!("Failed to build HTTP client: {}", e)),
+        };
+
+        let base = endpoint.trim_end_matches('/');
+        let url = format!("{}/chat/completions", base);
+        let body = serde_json::json!({
+            "model": model,
+            "messages": [
+                { "role": "system", "content": system_prompt },
+                { "role": "user", "content": user_prompt }
+            ]
+        });
+
+        let resp = match client.post(&url).json(&body).send().await {
+            Ok(r) => r,
+            Err(e) => {
+                return Err(format!(
+                    "Failed to connect to OmniRoute endpoint at '{}'. Ensure OmniRoute or your local model server is running: {}",
+                    endpoint, e
+                ));
+            }
+        };
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let err_body = resp.text().await.unwrap_or_default();
+            return Err(format!("OmniRoute API error (HTTP {}): {}", status, err_body));
+        }
+
+        let json_val: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
+
+        let content = json_val["choices"][0]["message"]["content"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+
+        Ok(content)
     }
 }
 

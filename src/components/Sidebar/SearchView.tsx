@@ -42,10 +42,13 @@ export function SearchView() {
 
   const handleMatchClick = async (m: SearchMatch) => {
     try {
-      const content = await invokeSafe<string>("read_workspace_file", { path: m.filePath });
-      openFile(m.filePath, content, "typescript");
-    } catch {
-      openFile(m.filePath, `// ${m.lineContent}`, "typescript");
+      const content = await invokeSafe<string>("read_workspace_file", {
+        path: m.filePath,
+        workspaceRoot: currentWorkspace.value || undefined,
+      });
+      openFile(m.filePath, content);
+    } catch (err) {
+      console.error(`Failed to open search match ${m.filePath}:`, err);
     }
   };
 

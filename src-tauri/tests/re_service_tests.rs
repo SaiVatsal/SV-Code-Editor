@@ -24,8 +24,8 @@ fn test_re_service_analyze_binary_and_notes() {
     mock_pe[0x86] = 2;
     // SizeOfOptionalHeader at 0x94 (0xF0)
     mock_pe[0x94] = 0xF0;
-    // Section headers begin at 0x80 + 4 + 20 + 0xF0 = 0x1A8
-    let sec1_offset = 0x1A8;
+    // Section headers begin at pe_offset + 4 (PE sig) + 20 (COFF header) + 0xF0 (Opt header) = 0x188
+    let sec1_offset = 0x188;
     mock_pe[sec1_offset..sec1_offset + 5].copy_from_slice(b".text");
     let sec2_offset = sec1_offset + 40;
     mock_pe[sec2_offset..sec2_offset + 5].copy_from_slice(b".data");
