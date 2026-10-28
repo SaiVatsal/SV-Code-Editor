@@ -20,5 +20,6 @@
 - **2026-10-28 08:15**: Implemented real OmniRoute `/v1/chat/completions` client in `AgentEngine` with honest error reporting and connected interactive Run Step action in AgentsHub.
 - **2026-10-28 08:20**: Connected reactive Monaco Editor options and global custom events (`editor-find`, `editor-replace`, `editor-comment`, `editor-goto-line`, `editor-format`) to the MenuBar and Settings persistence.
 - **2026-10-28 08:25**: Implemented dynamic Task Reports viewer in BottomPanel loading real reports from `.sv/reports/<task-id>/REPORT.md` and opening them directly in Monaco.
+- **2026-10-28 08:48**: Integrated official direct download link and Windows installer badges for `SV-Code-Editor-Setup.exe` into README.md for instant one-click download.
 
 

