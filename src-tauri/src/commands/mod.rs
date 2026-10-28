@@ -9,7 +9,7 @@ use crate::services::rea_service::ReaService;
 use crate::services::search_service::SearchService;
 use crate::services::tool_manager::ToolManager;
 use crate::services::updater_service::UpdaterService;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -343,4 +343,71 @@ pub async fn write_workspace_file(_state: State<'_, Arc<AppState>>, path: String
     }
     fs::write(&path, content).map_err(|e| format!("Failed to write file: {}", e))
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FileEntry {
+    pub name: String,
+    pub path: String,
+    pub is_directory: bool,
+    pub children: Option<Vec<FileEntry>>,
+}
+
+#[tauri::command]
+pub async fn list_workspace_directory(_state: State<'_, Arc<AppState>>, path: String) -> Result<Vec<FileEntry>, String> {
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Err("Directory does not exist".into());
+    }
+    if !p.is_dir() {
+        return Err("Path is not a directory".into());
+    }
+    let mut entries = Vec::new();
+    if let Ok(read_dir) = fs::read_dir(p) {
+        for entry in read_dir.flatten() {
+            let entry_path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') && name != ".sv" {
+                continue;
+            }
+            let is_dir = entry_path.is_dir();
+            entries.push(FileEntry {
+                name,
+                path: entry_path.to_string_lossy().to_string(),
+                is_directory: is_dir,
+                children: None,
+            });
+        }
+    }
+    entries.sort_by(|a, b| {
+        if a.is_directory != b.is_directory {
+            b.is_directory.cmp(&a.is_directory)
+        } else {
+            a.name.to_lowercase().cmp(&b.name.to_lowercase())
+        }
+    });
+    Ok(entries)
+}
+
+#[tauri::command]
+pub async fn open_native_file_dialog() -> Result<Option<String>, String> {
+    let file = rfd::FileDialog::new().pick_file();
+    Ok(file.map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+pub async fn open_native_folder_dialog() -> Result<Option<String>, String> {
+    let folder = rfd::FileDialog::new().pick_folder();
+    Ok(folder.map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+pub async fn save_native_file_dialog(default_name: Option<String>) -> Result<Option<String>, String> {
+    let mut dialog = rfd::FileDialog::new();
+    if let Some(name) = default_name {
+        dialog = dialog.set_file_name(&name);
+    }
+    let file = dialog.save_file();
+    Ok(file.map(|p| p.to_string_lossy().to_string()))
+}
+
 

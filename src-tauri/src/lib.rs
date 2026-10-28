@@ -84,6 +84,10 @@ pub fn run() {
             commands::updater_rollback_settings,
             commands::read_workspace_file,
             commands::write_workspace_file,
+            commands::list_workspace_directory,
+            commands::open_native_file_dialog,
+            commands::open_native_folder_dialog,
+            commands::save_native_file_dialog,
         ])
         .setup(|app| {
             info!("SV Code Editor main window initialized");

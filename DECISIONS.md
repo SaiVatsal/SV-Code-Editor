@@ -13,5 +13,7 @@
 - **2026-10-28 06:30**: Adopted ESLint 9 flat configuration in `eslint.config.js` and Vitest 3 test runner for frontend regression testing.
 - **2026-10-28 07:10**: Configured NSIS packaging with native `English` localization and currentUser non-admin installer mode in `tauri.conf.json`.
 - **2026-10-28 07:15**: Generated high-definition multi-resolution 7-tier Windows icon suite (16x16 through 256x256 RGBA) with dark obsidian squircle and electric cyan/violet `< SV >` code brackets branding.
+- **2026-10-28 07:35**: Integrated native Windows File & Folder pickers via `rfd` and dynamic filesystem directory listing in `commands/mod.rs` with real workspace loading in Explorer.
+- **2026-10-28 07:38**: Added complete VS Code MenuBar (`File`, `Edit`, `Selection`, `View`, `Go`, `Run`, `Terminal`, `Help`) with keyboard shortcut badges, full global shortcut handler, and non-blocking in-app Google Sync modal.
 
 

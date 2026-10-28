@@ -1,70 +1,107 @@
-import { useState } from "preact/hooks";
+import { useState, useEffect } from "preact/hooks";
 import { currentWorkspace, openFile, activeSidebarView, isSidebarVisible } from "@/state/appState";
 import { invokeSafe } from "@/services/api";
 
 interface FileNode {
   name: string;
   path: string;
-  isDirectory: boolean;
+  is_directory: boolean;
   children?: FileNode[];
+  isOpen?: boolean;
 }
 
 export function ExplorerView() {
+  const [tree, setTree] = useState<FileNode[]>([]);
+  const [loading, setLoading] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: FileNode } | null>(null);
 
-  // Initial project file tree
-  const sampleTree: FileNode[] = [
-    {
-      name: "src",
-      path: "src",
-      isDirectory: true,
-      children: [
-        { name: "main.tsx", path: "src/main.tsx", isDirectory: false },
-        { name: "App.tsx", path: "src/App.tsx", isDirectory: false },
-        {
-          name: "styles",
-          path: "src/styles",
-          isDirectory: true,
-          children: [{ name: "theme.css", path: "src/styles/theme.css", isDirectory: false }],
-        },
-      ],
-    },
-    {
-      name: "src-tauri",
-      path: "src-tauri",
-      isDirectory: true,
-      children: [
-        { name: "Cargo.toml", path: "src-tauri/Cargo.toml", isDirectory: false },
-        { name: "tauri.conf.json", path: "src-tauri/tauri.conf.json", isDirectory: false },
-        {
-          name: "src",
-          path: "src-tauri/src",
-          isDirectory: true,
-          children: [
-            { name: "main.rs", path: "src-tauri/src/main.rs", isDirectory: false },
-            { name: "lib.rs", path: "src-tauri/src/lib.rs", isDirectory: false },
-          ],
-        },
-      ],
-    },
-    { name: "package.json", path: "package.json", isDirectory: false },
-    { name: "tsconfig.json", path: "tsconfig.json", isDirectory: false },
-    { name: "versions.json", path: "versions.json", isDirectory: false },
-    { name: "DECISIONS.md", path: "DECISIONS.md", isDirectory: false },
-    { name: "PROGRESS.md", path: "PROGRESS.md", isDirectory: false },
-    { name: "sample_binary.exe", path: "sample_binary.exe", isDirectory: false },
-  ];
+  const loadDirectory = async (dirPath: string) => {
+    setLoading(true);
+    try {
+      const items = await invokeSafe<Array<{ name: string; path: string; is_directory: boolean }>>(
+        "list_workspace_directory",
+        { path: dirPath }
+      );
+      setTree(items.map((it) => ({ ...it, isOpen: false })));
+    } catch {
+      // Fallback sample files if workspace cannot be read directly
+      setTree([
+        { name: "package.json", path: `${dirPath}\\package.json`, is_directory: false },
+        { name: "README.md", path: `${dirPath}\\README.md`, is_directory: false },
+        { name: "PROGRESS.md", path: `${dirPath}\\PROGRESS.md`, is_directory: false },
+        { name: "DECISIONS.md", path: `${dirPath}\\DECISIONS.md`, is_directory: false },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDirectory(currentWorkspace.value);
+  }, [currentWorkspace.value]);
+
+  const handleOpenFolder = async () => {
+    try {
+      const selected = await invokeSafe<string | null>("open_native_folder_dialog");
+      if (selected) {
+        currentWorkspace.value = selected;
+      }
+    } catch (e) {
+      console.error("Open folder error:", e);
+    }
+  };
+
+  const handleNewFile = () => {
+    const id = `untitled-${Date.now().toString().slice(-4)}`;
+    openFile(id, "", "plaintext");
+  };
 
   const handleFileClick = async (node: FileNode) => {
-    if (node.isDirectory) return;
+    if (node.is_directory) {
+      // Toggle directory expansion
+      if (node.isOpen) {
+        node.isOpen = false;
+        setTree([...tree]);
+      } else {
+        node.isOpen = true;
+        if (!node.children || node.children.length === 0) {
+          try {
+            const subItems = await invokeSafe<Array<{ name: string; path: string; is_directory: boolean }>>(
+              "list_workspace_directory",
+              { path: node.path }
+            );
+            node.children = subItems.map((s) => ({ ...s, isOpen: false }));
+          } catch {
+            node.children = [];
+          }
+        }
+        setTree([...tree]);
+      }
+      return;
+    }
+
     try {
       const content = await invokeSafe<string>("read_workspace_file", { path: node.path });
-      const ext = node.name.split(".").pop() || "";
-      const lang = ext === "rs" ? "rust" : ext === "ts" || ext === "tsx" ? "typescript" : ext === "json" ? "json" : ext === "css" ? "css" : ext === "md" ? "markdown" : "plaintext";
-      openFile(node.path, content, lang);
+      const ext = node.name.split(".").pop()?.toLowerCase() || "";
+      const langMap: Record<string, string> = {
+        ts: "typescript",
+        tsx: "typescript",
+        js: "javascript",
+        jsx: "javascript",
+        rs: "rust",
+        py: "python",
+        json: "json",
+        css: "css",
+        html: "html",
+        md: "markdown",
+        toml: "toml",
+        sql: "sql",
+        c: "c",
+        cpp: "cpp",
+      };
+      openFile(node.path, content, langMap[ext] || "plaintext");
     } catch {
-      // In preview fallback
-      openFile(node.path, `// File content for ${node.name}\n`, "typescript");
+      openFile(node.path, `// Could not read file: ${node.name}\n`, "plaintext");
     }
   };
 
@@ -81,22 +118,98 @@ export function ExplorerView() {
 
   return (
     <div
-      style={{ display: "flex", flexDirection: "column", height: "100%", padding: "12px", overflowY: "auto" }}
+      style={{ display: "flex", flexDirection: "column", height: "100%", padding: "10px", overflowY: "auto" }}
       onClick={() => setContextMenu(null)}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-        <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Explorer</h3>
-        <span style={{ fontSize: "11px", color: "var(--fg-muted)" }}>Workspace</span>
+      {/* Explorer Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+        <h3 style={{ margin: 0, fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          Explorer
+        </h3>
+        <div style={{ display: "flex", gap: "4px" }}>
+          <button
+            onClick={handleNewFile}
+            style={{ background: "transparent", border: "none", color: "var(--fg-muted)", cursor: "pointer", padding: "2px" }}
+            title="New File (Ctrl+N)"
+          >
+            <span className="codicon codicon-new-file" />
+          </button>
+          <button
+            onClick={handleOpenFolder}
+            style={{ background: "transparent", border: "none", color: "var(--fg-muted)", cursor: "pointer", padding: "2px" }}
+            title="Open Folder (Ctrl+K Ctrl+O)"
+          >
+            <span className="codicon codicon-folder-opened" />
+          </button>
+          <button
+            onClick={() => loadDirectory(currentWorkspace.value)}
+            style={{ background: "transparent", border: "none", color: "var(--fg-muted)", cursor: "pointer", padding: "2px" }}
+            title="Refresh Explorer"
+          >
+            <span className="codicon codicon-refresh" />
+          </button>
+        </div>
       </div>
 
-      <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--fg-subtle)", marginBottom: "6px" }}>
-        {currentWorkspace.value.split(/[\\/]/).pop()?.toUpperCase()}
+      {/* Workspace root name banner */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "4px 6px",
+          backgroundColor: "var(--bg-surface)",
+          border: "var(--border-width) solid var(--border-subtle)",
+          marginBottom: "8px",
+          fontSize: "11px",
+        }}
+      >
+        <span style={{ fontWeight: 700, color: "var(--fg-default)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          📁 {currentWorkspace.value.split(/[\\/]/).pop() || currentWorkspace.value}
+        </span>
+        <button
+          onClick={handleOpenFolder}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "var(--accent)",
+            fontSize: "10px",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          Change
+        </button>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-        {renderTree(sampleTree, 0, handleFileClick, handleContextMenu)}
-      </div>
+      {/* File Tree */}
+      {loading ? (
+        <div style={{ fontSize: "11px", color: "var(--fg-muted)", padding: "10px" }}>Loading files...</div>
+      ) : tree.length === 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "12px 0" }}>
+          <span style={{ fontSize: "12px", color: "var(--fg-muted)" }}>No files in workspace.</span>
+          <button
+            onClick={handleOpenFolder}
+            style={{
+              padding: "6px 12px",
+              backgroundColor: "var(--accent)",
+              color: "#fff",
+              border: "none",
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Open Folder
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+          {renderTree(tree, 0, handleFileClick, handleContextMenu)}
+        </div>
+      )}
 
+      {/* Context Menu */}
       {contextMenu && (
         <div
           style={{
@@ -105,8 +218,8 @@ export function ExplorerView() {
             left: `${contextMenu.x}px`,
             backgroundColor: "var(--bg-surface)",
             border: "var(--border-width) solid var(--border-strong)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-            zIndex: 1000,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+            zIndex: 10000,
             padding: "4px 0",
             minWidth: "160px",
           }}
@@ -130,16 +243,13 @@ export function ExplorerView() {
           </div>
           <div style={{ height: "1px", backgroundColor: "var(--border-subtle)", margin: "4px 0" }} />
           <div
-            onClick={() => setContextMenu(null)}
-            style={{ padding: "4px 12px", cursor: "pointer", fontSize: "11px" }}
+            onClick={() => {
+              navigator.clipboard?.writeText(contextMenu.node.path);
+              setContextMenu(null);
+            }}
+            style={{ padding: "5px 12px", cursor: "pointer", fontSize: "11px" }}
           >
-            Open in Hex Viewer
-          </div>
-          <div
-            onClick={() => setContextMenu(null)}
-            style={{ padding: "4px 12px", cursor: "pointer", fontSize: "11px" }}
-          >
-            Copy Relative Path
+            Copy Full Path
           </div>
         </div>
       )}
@@ -162,8 +272,8 @@ function renderTree(
           onContextMenu={(e) => onContextMenu(e, node)}
           style={{
             paddingLeft: `${depth * 14 + 4}px`,
-            paddingTop: "3px",
-            paddingBottom: "3px",
+            paddingTop: "2px",
+            paddingBottom: "2px",
             display: "flex",
             alignItems: "center",
             gap: "6px",
@@ -171,18 +281,32 @@ function renderTree(
             fontSize: "12px",
             color: isBin ? "var(--accent)" : "var(--fg-default)",
           }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = "var(--bg-hover)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+          }}
         >
           <span
             className={`codicon ${
-              node.isDirectory ? "codicon-folder" : isBin ? "codicon-file-binary" : "codicon-file-code"
+              node.is_directory
+                ? node.isOpen
+                  ? "codicon-folder-opened"
+                  : "codicon-folder"
+                : isBin
+                ? "codicon-file-binary"
+                : "codicon-file-code"
             }`}
-            style={{ fontSize: "14px" }}
+            style={{
+              fontSize: "14px",
+              color: node.is_directory ? "var(--color-warning)" : isBin ? "var(--accent)" : "var(--fg-muted)",
+            }}
           />
-          <span>{node.name}</span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.name}</span>
         </div>
-        {node.isDirectory && node.children && renderTree(node.children, depth + 1, onFileClick, onContextMenu)}
+        {node.is_directory && node.isOpen && node.children && renderTree(node.children, depth + 1, onFileClick, onContextMenu)}
       </div>
     );
   });
 }
-

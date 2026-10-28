@@ -1,3 +1,4 @@
+import { useState } from "preact/hooks";
 import {
   currentWorkspace,
   settings,
@@ -5,19 +6,12 @@ import {
   isCommandPaletteOpen,
   isQuickOpenOpen,
 } from "@/state/appState";
-import { invokeSafe } from "@/services/api";
+import { MenuBar } from "@/components/MenuBar/MenuBar";
+import { GoogleSignInModal } from "@/components/Modals/GoogleSignInModal";
 
 export function TitleBar() {
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const isSafeMode = typeof window !== "undefined" && window.location.search.includes("safe-mode");
-
-  const handleGoogleSignIn = async () => {
-    try {
-      const authUrl = await invokeSafe<string>("auth_start_login");
-      window.open(authUrl, "_blank");
-    } catch (e) {
-      alert("Google Sign-In: Configure SV_GOOGLE_CLIENT_ID in settings first (see SETUP-GOOGLE.md).");
-    }
-  };
 
   return (
     <div
@@ -25,17 +19,32 @@ export function TitleBar() {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        height: "32px",
+        height: "30px",
         backgroundColor: "var(--bg-activitybar)",
         borderBottom: "var(--border-width) solid var(--border-subtle)",
-        padding: "0 10px",
+        padding: "0 6px",
         fontSize: "12px",
         userSelect: "none",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      {/* Left: Menu bar with File, Edit, Selection, View, Go, Run, Terminal, Help */}
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <MenuBar />
+      </div>
+
+      {/* Center: Current Workspace title */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          color: "var(--fg-muted)",
+          fontSize: "12px",
+        }}
+      >
         <span style={{ fontWeight: 600, color: "var(--accent)" }}>SV Code</span>
-        <span style={{ color: "var(--fg-muted)" }}>v1.0.0</span>
+        <span style={{ color: "var(--fg-subtle)" }}>—</span>
+        <span style={{ color: "var(--fg-default)" }}>{currentWorkspace.value}</span>
         {isSafeMode && (
           <span
             style={{
@@ -49,26 +58,25 @@ export function TitleBar() {
             SAFE MODE
           </span>
         )}
-        <span style={{ color: "var(--fg-subtle)" }}>—</span>
-        <span style={{ color: "var(--fg-default)" }}>{currentWorkspace.value}</span>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      {/* Right: Quick actions & Profile */}
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         <button
           onClick={() => (isQuickOpenOpen.value = true)}
-          style={{ padding: "2px 8px", fontSize: "11px" }}
+          style={{ padding: "2px 6px", fontSize: "11px", backgroundColor: "transparent" }}
           title="Quick Open (Ctrl+P)"
         >
-          <span className="codicon codicon-search" style={{ marginRight: "4px" }} />
+          <span className="codicon codicon-search" style={{ marginRight: "3px" }} />
           Quick Open
         </button>
 
         <button
           onClick={() => (isCommandPaletteOpen.value = true)}
-          style={{ padding: "2px 8px", fontSize: "11px" }}
+          style={{ padding: "2px 6px", fontSize: "11px", backgroundColor: "transparent" }}
           title="Command Palette (Ctrl+Shift+P)"
         >
-          <span className="codicon codicon-terminal" style={{ marginRight: "4px" }} />
+          <span className="codicon codicon-terminal" style={{ marginRight: "3px" }} />
           Palette
         </button>
 
@@ -81,19 +89,29 @@ export function TitleBar() {
             color: "var(--fg-muted)",
           }}
         >
-          Profile: <strong>{settings.value.profile}</strong>
+          <strong>{settings.value.profile}</strong>
         </span>
 
         <button
-          onClick={handleGoogleSignIn}
-          style={{ padding: "2px 8px", fontSize: "11px" }}
-          title="Optional Google Sign-In & Settings Sync"
+          onClick={() => setIsSignInModalOpen(true)}
+          style={{
+            padding: "2px 8px",
+            fontSize: "11px",
+            backgroundColor: userProfile.value?.isAuthenticated ? "rgba(34, 197, 94, 0.15)" : "var(--bg-surface)",
+            color: userProfile.value?.isAuthenticated ? "var(--color-success)" : "var(--fg-default)",
+            border: "var(--border-width) solid var(--border-subtle)",
+          }}
+          title="Google Sign-In & Settings Sync"
         >
-          <span className="codicon codicon-account" style={{ marginRight: "4px" }} />
+          <span
+            className={userProfile.value?.isAuthenticated ? "codicon codicon-pass-filled" : "codicon codicon-account"}
+            style={{ marginRight: "4px" }}
+          />
           {userProfile.value?.isAuthenticated ? userProfile.value.name : "Sign In"}
         </button>
       </div>
+
+      <GoogleSignInModal isOpen={isSignInModalOpen} onClose={() => setIsSignInModalOpen(false)} />
     </div>
   );
 }
-
