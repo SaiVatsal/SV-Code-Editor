@@ -1,0 +1,13 @@
+SV Code Editor
+Copyright (c) 2026 SV Code Editor Authors
+
+This product includes icons from the Codicons icon library:
+- Codicons (https://github.com/microsoft/vscode-codicons)
+  Copyright (c) Microsoft Corporation
+  Licensed under the Creative Commons Attribution 4.0 International Public License (CC-BY-4.0)
+  https://creativecommons.org/licenses/by/4.0/
+
+This product bundles the Monaco Editor:
+- Monaco Editor (https://github.com/microsoft/monaco-editor)
+  Copyright (c) Microsoft Corporation
+  Licensed under the MIT License

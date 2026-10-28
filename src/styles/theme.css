@@ -1,0 +1,184 @@
+/* Zero Animation Guarantee - Applies to every element, pseudo-element and view */
+*,
+*::before,
+*::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}
+
+:root {
+  /* System UI font stack */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Consolas", "Courier New", monospace;
+  --font-size-ui: 13px;
+  --line-height-ui: 1.4;
+
+  /* 4px Spacing Grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* 1px Structural Borders */
+  --border-width: 1px;
+}
+
+/* Dark Theme (Default) - OKLCH */
+[data-theme="dark"],
+:root {
+  color-scheme: dark;
+  --bg-app: oklch(0.18 0.01 260);
+  --bg-sidebar: oklch(0.20 0.01 260);
+  --bg-activitybar: oklch(0.16 0.01 260);
+  --bg-editor: oklch(0.17 0.01 260);
+  --bg-panel: oklch(0.19 0.01 260);
+  --bg-statusbar: oklch(0.22 0.02 250);
+  --bg-surface: oklch(0.23 0.01 260);
+  --bg-surface-hover: oklch(0.27 0.01 260);
+  --bg-surface-active: oklch(0.31 0.02 260);
+  --bg-input: oklch(0.22 0.01 260);
+
+  --fg-default: oklch(0.92 0.01 260);
+  --fg-muted: oklch(0.68 0.02 260);
+  --fg-subtle: oklch(0.52 0.02 260);
+
+  --border-subtle: oklch(0.28 0.01 260);
+  --border-strong: oklch(0.36 0.02 260);
+
+  /* Single Accent: Electric Indigo / Cyan */
+  --accent: oklch(0.65 0.18 250);
+  --accent-hover: oklch(0.70 0.18 250);
+  --accent-fg: oklch(0.98 0.01 260);
+
+  /* Semantic Alerts */
+  --color-error: oklch(0.63 0.22 25);
+  --color-warning: oklch(0.78 0.17 80);
+  --color-success: oklch(0.70 0.18 145);
+  --color-info: oklch(0.68 0.15 235);
+
+  --focus-ring: oklch(0.65 0.18 250);
+}
+
+/* Light Theme - OKLCH */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg-app: oklch(0.98 0.005 260);
+  --bg-sidebar: oklch(0.95 0.005 260);
+  --bg-activitybar: oklch(0.92 0.01 260);
+  --bg-editor: oklch(1.0 0 0);
+  --bg-panel: oklch(0.96 0.005 260);
+  --bg-statusbar: oklch(0.90 0.02 250);
+  --bg-surface: oklch(0.93 0.005 260);
+  --bg-surface-hover: oklch(0.89 0.01 260);
+  --bg-surface-active: oklch(0.85 0.02 260);
+  --bg-input: oklch(0.99 0.002 260);
+
+  --fg-default: oklch(0.20 0.01 260);
+  --fg-muted: oklch(0.42 0.02 260);
+  --fg-subtle: oklch(0.58 0.02 260);
+
+  --border-subtle: oklch(0.88 0.01 260);
+  --border-strong: oklch(0.78 0.02 260);
+
+  --accent: oklch(0.55 0.20 250);
+  --accent-hover: oklch(0.50 0.20 250);
+  --accent-fg: oklch(0.99 0 0);
+
+  --color-error: oklch(0.55 0.22 25);
+  --color-warning: oklch(0.65 0.17 80);
+  --color-success: oklch(0.52 0.18 145);
+  --color-info: oklch(0.55 0.16 235);
+
+  --focus-ring: oklch(0.55 0.20 250);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
+  line-height: var(--line-height-ui);
+  color: var(--fg-default);
+  background-color: var(--bg-app);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Accessible visible focus ring */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+button {
+  font-family: inherit;
+  font-size: var(--font-size-ui);
+  border: var(--border-width) solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  color: var(--fg-default);
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+button:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+button:active {
+  background-color: var(--bg-surface-active);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background-color: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+
+button.primary:hover {
+  background-color: var(--accent-hover);
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: var(--font-size-ui);
+  background-color: var(--bg-input);
+  color: var(--fg-default);
+  border: var(--border-width) solid var(--border-subtle);
+  padding: 4px 8px;
+  border-radius: 0;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--focus-ring);
+}
+
+/* Static progress bar without any CSS transitions or animations */
+.static-progress-track {
+  width: 100%;
+  height: 6px;
+  background-color: var(--bg-surface-hover);
+  border: var(--border-width) solid var(--border-subtle);
+  overflow: hidden;
+}
+
+.static-progress-fill {
+  height: 100%;
+  background-color: var(--accent);
+}
+
+/* Monospace text */
+.font-code {
+  font-family: var(--font-mono);
+}
+

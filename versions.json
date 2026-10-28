@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": "1.0.0",
+  "updatedAt": "2026-10-28T05:15:00Z",
+  "components": {
+    "node": {
+      "name": "Node.js 22 LTS",
+      "version": "22.14.0",
+      "category": "runtime",
+      "essential": true,
+      "minRamGb": 2,
+      "url": "https://nodejs.org/dist/v22.14.0/node-v22.14.0-win-x64.zip",
+      "sha256": "55b639295920b219bb2acbcfa00f90393a2789095b7323f79475c9f34795f217",
+      "extractDir": "node-v22.14.0-win-x64",
+      "binRelPath": "node-v22.14.0-win-x64/node.exe",
+      "npmRelPath": "node-v22.14.0-win-x64/npm.cmd",
+      "npxRelPath": "node-v22.14.0-win-x64/npx.cmd",
+      "smokeArgs": ["--version"],
+      "expectedSmokeOutput": "v22.14.0"
+    },
+    "jdk": {
+      "name": "Eclipse Temurin JDK 21",
+      "version": "21.0.12.1+1",
+      "category": "runtime",
+      "essential": false,
+      "minRamGb": 4,
+      "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_windows_hotspot_21.0.12.1_1.zip",
+      "sha256": "f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e",
+      "extractDir": "jdk-21.0.12.1+1",
+      "binRelPath": "jdk-21.0.12.1+1/bin/java.exe",
+      "smokeArgs": ["-version"],
+      "expectedSmokeOutput": "openjdk version \"21"
+    },
+    "ghidra": {
+      "name": "Ghidra Reverse Engineering Framework",
+      "version": "12.2",
+      "category": "reverse-engineering",
+      "essential": false,
+      "minRamGb": 4,
+      "url": "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.2_build/ghidra_12.2_PUBLIC_20261016.zip",
+      "sha256": "2c2cd776db3c1f6a097ba418922378ac3649cadd5e844a6f5f088ae628a7be67",
+      "extractDir": "ghidra_12.2_PUBLIC",
+      "binRelPath": "ghidra_12.2_PUBLIC/support/analyzeHeadless.bat",
+      "smokeArgs": [],
+      "expectedSmokeOutput": "Ghidra"
+    },
+    "omniroute": {
+      "name": "OmniRoute AI Gateway",
+      "version": "3.8.52",
+      "category": "ai-provider",
+      "essential": false,
+      "minRamGb": 2,
+      "npmPackage": "omniroute@3.8.52",
+      "defaultPort": 20128,
+      "endpoint": "http://127.0.0.1:20128/v1",
+      "healthPath": "/health",
+      "modelsPath": "/v1/models"
+    },
+    "rea": {
+      "name": "REA (Reverse Engineer Anything)",
+      "version": "6.8.0",
+      "category": "reverse-engineering",
+      "essential": false,
+      "minRamGb": 4,
+      "npmPackage": "rea-agents@6.8.0",
+      "cliCommand": "rea",
+      "doctorArgs": ["doctor"],
+      "mcpCommand": "rea-agents"
+    },
+    "impeccable": {
+      "name": "Impeccable Design Skill",
+      "version": "4.8.0",
+      "category": "skill",
+      "essential": false,
+      "minRamGb": 2,
+      "sourceRepo": "pbakaus/impeccable",
+      "installCommand": "npx skills add pbakaus/impeccable"
+    }
+  }
+}
+

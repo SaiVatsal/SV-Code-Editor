@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-cli/schema.json",
+  "identifier": "default",
+  "description": "Default capability set for SV Code Editor with strict auditing",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:default",
+    "fs:default",
+    "dialog:default",
+    "notification:default",
+    "process:default",
+    "updater:default"
+  ]
+}
+

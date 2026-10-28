@@ -1,0 +1,6 @@
+[build]
+rustflags = ["-C", "link-arg=/LIBPATH:G:\\msvc-lib\\x64"]
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
+rustflags = ["-C", "link-arg=/LIBPATH:G:\\msvc-lib\\x64"]

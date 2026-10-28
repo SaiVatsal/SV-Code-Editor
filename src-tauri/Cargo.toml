@@ -1,0 +1,73 @@
+[package]
+name = "sv-code-editor"
+version = "1.0.0"
+description = "SV Code Editor - Fast, low-memory personal code editor & agent platform"
+authors = ["SV Code Team"]
+edition = "2021"
+default-run = "svcode"
+
+[[bin]]
+name = "svcode"
+path = "src/main.rs"
+
+[lib]
+name = "sv_code_editor_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+path = "src/lib.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.2.0", features = ["tray-icon"] }
+tauri-plugin-shell = "2.2.0"
+tauri-plugin-fs = "2.2.0"
+tauri-plugin-dialog = "2.2.0"
+tauri-plugin-notification = "2.2.0"
+tauri-plugin-process = "2.2.0"
+tauri-plugin-updater = "2.2.0"
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.43", features = ["full"] }
+portable-pty = "0.8"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+futures-util = "0.3"
+sha2 = "0.10"
+hex = "0.4"
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
+flate2 = "1.0"
+tar = "0.4"
+sysinfo = "0.33"
+regex = "1.11"
+glob = "0.3"
+which = "7.0"
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tracing-appender = "0.2"
+directories = "6.0"
+uuid = { version = "1.11", features = ["v4", "serde"] }
+async-trait = "0.1"
+url = "2.5"
+base64 = "0.22"
+open = "5.3"
+tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
+clap = { version = "4.5", features = ["derive"] }
+toml = "0.8"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Credentials",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Power"
+] }
+
+[dev-dependencies]
+tempfile = "3.15"
+wiremock = "0.6"
+
