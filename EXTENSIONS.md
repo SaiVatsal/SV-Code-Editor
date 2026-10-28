@@ -114,3 +114,4 @@ self.onmessage = async (event) => {
   ```
 - **Safe Mode**:
   Run `svcode --safe-mode` to start the editor with all third-party extensions disabled for debugging.
+

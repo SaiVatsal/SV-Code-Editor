@@ -64,3 +64,4 @@ Audit logs are append-only and cannot be cleared by running agent tasks.
 ## Reporting a Vulnerability
 
 If you discover a security issue or vulnerability in SV Code Editor, please email security disclosure to `security@svcode.dev` or file a private security advisory on GitHub. We aim to respond to all reports within 24 hours.
+

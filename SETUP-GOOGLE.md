@@ -75,3 +75,4 @@ To sign out and delete all local credentials:
 1. Open Settings > **Accounts & Sync**.
 2. Click **Sign Out & Purge Tokens**.
 3. All tokens in Windows Credential Manager are deleted immediately.
+

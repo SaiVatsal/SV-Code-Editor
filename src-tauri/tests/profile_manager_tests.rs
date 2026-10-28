@@ -50,3 +50,4 @@ fn test_startup_duration() {
     let duration = pm.startup_duration_ms();
     assert!(duration < 5000, "Cold startup duration should be within 5000 ms");
 }
+

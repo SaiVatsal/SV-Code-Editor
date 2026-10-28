@@ -62,3 +62,4 @@ async fn test_tool_manager_sha256_checksum_verification() {
 
     let _ = fs::remove_dir_all(&temp_dir);
 }
+

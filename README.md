@@ -127,3 +127,4 @@ Installers are generated in `src-tauri\target\release\bundle\nsis\`:
 ## License
 
 Licensed under the [MIT License](LICENSE). Codicons by Microsoft licensed under CC-BY-4.0. See [NOTICE](NOTICE) and [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+

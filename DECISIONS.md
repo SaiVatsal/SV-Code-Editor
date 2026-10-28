@@ -11,3 +11,5 @@
 - **2026-10-28 06:20**: Created unprivileged native wrappers `lib.exe` and `rc.exe` in `G:\msvc-lib\bin` bridging MSVC flags (`/fo`, `/I`, `-out:`) to `windres.exe` and `ar.exe` with quote escaping.
 - **2026-10-28 06:22**: Generated `sv_stubs.lib` providing lightweight SEH unwinder stubs (`__gxx_personality_seh0`, `_Unwind_Resume`) for non-exceptional C++ build dependencies under `rust-lld`.
 - **2026-10-28 06:30**: Adopted ESLint 9 flat configuration in `eslint.config.js` and Vitest 3 test runner for frontend regression testing.
+
+

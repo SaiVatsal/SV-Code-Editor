@@ -94,3 +94,4 @@ Before any in-app update is applied, the `UpdaterService` performs an atomic saf
 2. Update `PROGRESS.md` and release notes in `DECISIONS.md`.
 3. Commit with tag: `git tag -a v1.0.0 -m "Release v1.0.0"`.
 4. Push tag: `git push origin v1.0.0`.
+

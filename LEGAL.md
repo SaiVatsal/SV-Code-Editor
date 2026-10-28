@@ -9,3 +9,4 @@
 
 ## Portable Tools & Downloader
 The first-run setup manager automates downloading and extracting open-source and free tool packages from official distributor endpoints (Node.js Foundation, Eclipse Foundation, National Security Agency, npm). Each downloaded tool remains subject to its respective license.
+

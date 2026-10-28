@@ -30,3 +30,4 @@ SV Code Editor incorporates open-source libraries and components. Below is an in
 - **OmniRoute**: MIT License (Diego Souza)
 - **REA**: Apache-2.0 / MIT (morluto)
 - **Impeccable**: MIT License (Paul Bakaus)
+

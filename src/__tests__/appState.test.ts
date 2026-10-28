@@ -85,3 +85,4 @@ describe('SV Code Editor App State', () => {
     expect(activeSidebarView.value).toBe('setup');
   });
 });
+
